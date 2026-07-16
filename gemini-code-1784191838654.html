@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>공유 캘린더</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="공유 캘린더">
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #4a90e2;
+      --bg-color: #f5f7fa;
+      --card-color: #ffffff;
+    }
+
+    /* 터치 스크롤 시 부드럽게 움직이도록 설정 */
+    html, body {
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent; /* 모바일 터치 시 파란 박스 제거 */
+    }
+
+    header {
+      margin: 10px 0 15px 0;
+      text-align: center;
+    }
+
+    header h1 {
+      color: #333;
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    /* --- 학년/반 선택 화면 (모바일 대응) --- */
+    #selection-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-color);
+      padding: 25px 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      max-width: 400px;
+      width: 100%;
+      margin: 30px auto 0 auto;
+      box-sizing: border-box;
+    }
+
+    #selection-screen h2 {
+      margin-top: 0;
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+    }
+
+    .select-box {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    .select-box label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .select-box select, .select-box input {
+      width: 100%;
+      padding: 14px 12px; /* 모바일 터치 영역 확장을 위해 늘림 */
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .select-box select:focus, .select-box input:focus {
+      border-color: var(--primary-color);
+    }
+
+    .reset-link-container {
+      width: 100%;
+      text-align: right;
+      margin-top: -10px;
+      margin-bottom: 15px;
+    }
+
+    .reset-link {
+      font-size: 12px;
+      color: #e24a4a;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 5px;
+    }
+
+    #start-btn {
+      width: 100%;
+      padding: 15px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    /* --- 메인 캘린더 화면 (모바일 대응) --- */
+    #main-screen {
+      display: none;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .class-info-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-color);
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      box-sizing: border-box;
+    }
+
+    .class-info-bar h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--primary-color);
+    }
+
+    .back-btn {
+      padding: 8px 12px;
+      background-color: #e2e8f0;
+      color: #4a5568;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* 레이아웃 컨테이너 */
+    .container {
+      display: flex;
+      gap: 15px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 캘린더 섹션 (모바일에서 최상단 배치) */
+    .calendar-section {
+      flex: 3;
+      background: var(--card-color);
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      min-height: 450px;
+    }
+
+    /* 사이드바 (일정 등록 폼 + 시간표) */
+    .form-section {
+      flex: 1.2;
+      background: var(--card-color);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      box-sizing: border-box;
+    }
+
+    .form-section h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group.row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .form-group.row div {
+      flex: 1;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+      color: #555;
+      font-size: 13px;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* --- 시간표 영역 (가로 스크롤 최적화) --- */
+    .timetable-section {
+      border-top: 1px dashed #ddd;
+      padding-top: 20px;
+    }
+
+    /* 모바일 화면 밖으로 밀려 깨지는 걸 방지하는 가로 스크롤 감싸개 */
+    .timetable-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch; /* 부드러운 스크롤 */
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+
+    .timetable-table {
+      width: 100%;
+      min-width: 320px; /* 너무 좁아져서 글자가 뭉치는 것 방지 */
+      border-collapse: collapse;
+    }
+
+    .timetable-table th, .timetable-table td {
+      border: 1px solid #eee;
+      text-align: center;
+      padding: 6px 2px;
+      font-size: 12px;
+    }
+
+    .timetable-table th {
+      background-color: #f7fafc;
+      font-weight: bold;
+      color: #4a5568;
+    }
+
+    .timetable-table input {
+      width: 100%;
+      border: none;
+      text-align: center;
+      padding: 4px 0;
+      font-size: 12px;
+      background: transparent;
+      outline: none;
+    }
+
+    .timetable-table input:focus {
+      background-color: #ebf8ff;
+    }
+
+    .save-timetable-btn {
+      width: 100%;
+      padding: 10px;
+      background-color: #48bb78;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* --- 모바일 일정 자동 줄바꿈 CSS --- */
+    .fc-event {
+      border: none !important;
+      border-radius: 4px !important;
+      padding: 2px 4px !important;
+      white-space: normal !important;
+      word-break: break-all !important;
+    }
+
+    .fc-event-title {
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      line-height: 1.2 !important;
+    }
+
+    /* 모바일 가독성을 위해 헤더 버튼 크기 살짝 조정 */
+    .fc .fc-toolbar-title {
+      font-size: 1.1rem !important;
+    }
+    .fc .fc-button {
+      padding: 6px 8px !important;
+      font-size: 12px !important;
+    }
+
+    /* =======================================================
+       ✨ [중요] 모바일 최적화 미디어 쿼리 (가장 핵심!)
+       - 화면이 좁은 폰에서는 달력이 위로 올라가고 입력 폼이 아래로 내려갑니다.
+       ======================================================= */
+    @media (max-width: 768px) {
+      body {
+        padding: 8px;
+      }
+      .container {
+        flex-direction: column; /* 가로 배열에서 세로 배열로 변경 */
+      }
+      .calendar-section {
+        order: 1; /* 캘린더를 가장 위에 배치 */
+        padding: 10px;
+        min-height: 400px;
+      }
+      .form-section {
+        order: 2; /* 일정 추가와 시간표를 아래로 내림 */
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📅 공유 캘린더</h1>
+  </header>
+
+  <div id="selection-screen">
+    <h2>반 선택하기</h2>
+    
+    <div class="select-box">
+      <label for="grade-select">학년</label>
+      <select id="grade-select">
+        <option value="1">1학년</option>
+        <option value="2">2학년</option>
+        <option value="3">3학년</option>
+      </select>
+    </div>
+
+    <div class="select-box">
+      <label for="class-select">반</label>
+      <select id="class-select">
+        <option value="1">1반</option>
+        <option value="2">2반</option>
+        <option value="3">3반</option>
+        <option value="4">4반</option>
+        <option value="5">5반</option>
+        <option value="6">6반</option>
+        <option value="7">7반</option>
+        <option value="8">8반</option>
+        <option value="9">9반</option>
+        <option value="10">10반</option>
+      </select>
+    </div>
+
+    <div class="select-box">
+      <label for="pw-input" id="pw-label">학급 관리자 비밀번호</label>
+      <input type="password" id="pw-input" placeholder="처음 입장 시 비번이 설정됩니다" required>
+    </div>
+
+    <div class="reset-link-container" id="reset-container" style="display: none;">
+      <button type="button" class="reset-link" id="pw-reset-btn">비밀번호 찾기/재설정</button>
+    </div>
+
+    <button id="start-btn">캘린더 입장</button>
+  </div>
+
+  <div id="main-screen">
+    <div class="class-info-bar">
+      <h2 id="class-title">1학년 1반 캘린더</h2>
+      <button class="back-btn" id="change-class-btn">반 변경하기</button>
+    </div>
+
+    <div class="container">
+      
+      <div class="calendar-section">
+        <div id="calendar"></div>
+      </div>
+
+      <div class="form-section">
+        <div>
+          <h3>➕ 일정 등록</h3>
+          <form id="eval-form">
+            <div class="form-group">
+              <label for="title">일정 이름</label>
+              <input type="text" id="title" placeholder="예: 수행평가 제출" required>
+            </div>
+            
+            <div class="form-group row">
+              <div>
+                <label for="start-date">시작일</label>
+                <input type="date" id="start-date" required>
+              </div>
+              <div>
+                <label for="end-date">종료일 (선택)</label>
+                <input type="date" id="end-date">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="subject-color">카테고리 색상</label>
+              <select id="subject-color">
+                <option value="#ff9b9b" style="background-color: #ff9b9b;">파스텔 핑크</option>
+                <option value="#a3e2ad" style="background-color: #a3e2ad;">파스텔 연두</option>
+                <option value="#b2d8f9" style="background-color: #b2d8f9;">파스텔 블루</option>
+                <option value="#ffdf80" style="background-color: #ffdf80;">파스텔 노랑</option>
+                <option value="#d2bcf3" style="background-color: #d2bcf3;">파스텔 보라</option>
+                <option value="#f9bc9b" style="background-color: #f9bc9b;">파스텔 살구</option>
+                <option value="#90afc5" style="background-color: #90afc5; color: #ffffff;">파스텔 블루그레이</option>
+                <option value="#e5e8e8" style="background-color: #e5e8e8;">파스텔 그레이</option>
+              </select>
+            </div>
+            <button type="submit" class="submit-btn">공유 캘린더에 등록</button>
+          </form>
+        </div>
+
+        <div class="timetable-section">
+          <h3>🕒 학급 시간표 (7교시)</h3>
+          <div class="timetable-responsive">
+            <table class="timetable-table">
+              <thead>
+                <tr>
+                  <th>교시</th>
+                  <th>월</th>
+                  <th>화</th>
+                  <th>수</th>
+                  <th>목</th>
+                  <th>금</th>
+                </tr>
+              </thead>
+              <tbody id="timetable-body"></tbody>
+            </table>
+          </div>
+          <button type="button" class="save-timetable-btn" id="save-timetable-btn">💾 시간표 저장</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const selectionScreen = document.getElementById('selection-screen');
+      const mainScreen = document.getElementById('main-screen');
+      const startBtn = document.getElementById('start-btn');
+      const changeClassBtn = document.getElementById('change-class-btn');
+      const classTitle = document.getElementById('class-title');
+      const calendarEl = document.getElementById('calendar');
+      const gradeSelect = document.getElementById('grade-select');
+      const classSelect = document.getElementById('class-select');
+      const pwInput = document.getElementById('pw-input');
+      const pwLabel = document.getElementById('pw-label');
+      const pwResetBtn = document.getElementById('pw-reset-btn');
+      const resetContainer = document.getElementById('reset-container');
+      const timetableBody = document.getElementById('timetable-body');
+      const saveTimetableBtn = document.getElementById('save-timetable-btn');
+
+      const MASTER_RECOVERY_PW = '2026!'; 
+
+      let calendar = null;
+      let currentStorageKey = ''; 
+      let currentPwKey = ''; 
+      let currentTimetableKey = ''; 
+      let savedEvents = [];
+
+      function createTimetableRows() {
+        timetableBody.innerHTML = '';
+        for (let period = 1; period <= 7; period++) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><b>${period}</b></td>
+            <td><input type="text" data-period="${period}" data-day="mon"></td>
+            <td><input type="text" data-period="${period}" data-day="tue"></td>
+            <td><input type="text" data-period="${period}" data-day="wed"></td>
+            <td><input type="text" data-period="${period}" data-day="thu"></td>
+            <td><input type="text" data-period="${period}" data-day="fri"></td>
+          `;
+          timetableBody.appendChild(tr);
+        }
+      }
+
+      createTimetableRows();
+
+      const autoGrade = localStorage.getItem('user_saved_grade');
+      const autoClass = localStorage.getItem('user_saved_class');
+
+      if (autoGrade && autoClass) {
+        gradeSelect.value = autoGrade;
+        classSelect.value = autoClass;
+        updatePwPlaceholder();
+      }
+
+      gradeSelect.addEventListener('change', updatePwPlaceholder);
+      classSelect.addEventListener('change', updatePwPlaceholder);
+
+      function updatePwPlaceholder() {
+        const key = `pw_G${gradeSelect.value}_C${classSelect.value}`;
+        const hasPw = localStorage.getItem(key);
+        if (hasPw) {
+          pwLabel.textContent = "학급 관리자 비밀번호 입력";
+          pwInput.placeholder = "관리자 비밀번호 입력";
+          resetContainer.style.display = 'block'; 
+        } else {
+          pwLabel.textContent = "학급 신규 비밀번호 생성";
+          pwInput.placeholder = "사용할 비밀번호 설정";
+          resetContainer.style.display = 'none'; 
+        }
+      }
+
+      updatePwPlaceholder();
+
+      pwResetBtn.addEventListener('click', function() {
+        const grade = gradeSelect.value;
+        const sClass = classSelect.value;
+        const targetPwKey = `pw_G${grade}_C${sClass}`;
+
+        const inputRecovery = prompt(`[${grade}학년 ${sClass}반] 비밀번호 재설정을 위해 복구 비밀번호를 입력해주세요.`);
+        
+        if (inputRecovery === null) return; 
+
+        if (inputRecovery === MASTER_RECOVERY_PW) {
+          const newPw = prompt('인증 성공! 새로 설정할 비밀번호를 입력해 주세요.');
+          if (newPw && newPw.trim() !== "") {
+            localStorage.setItem(targetPwKey, newPw.trim());
+            pwInput.value = newPw.trim(); 
+            alert(`[${grade}학년 ${sClass}반] 비밀번호가 변경되었습니다.`);
+            updatePwPlaceholder();
+          } else {
+            alert('유효하지 않은 비밀번호입니다.');
+          }
+        } else {
+          alert('복구 비밀번호가 올바르지 않습니다.');
+        }
+      });
+
+      startBtn.addEventListener('click', function() {
+        const grade = gradeSelect.value;
+        const sClass = classSelect.value;
+        const password = pwInput.value.trim();
+
+        if (!password) {
+          alert('비밀번호를 입력해 주세요!');
+          return;
+        }
+
+        currentPwKey = `pw_G${grade}_C${sClass}`;
+        const existingPw = localStorage.getItem(currentPwKey);
+
+        if (existingPw) {
+          if (existingPw !== password) {
+            alert('비밀번호가 올바르지 않습니다.');
+            return;
+          }
+        } else {
+          localStorage.setItem(currentPwKey, password);
+          alert(`축하합니다! ${grade}학년 ${sClass}반 비밀번호가 설정되었습니다.`);
+        }
+
+        localStorage.setItem('user_saved_grade', grade);
+        localStorage.setItem('user_saved_class', sClass);
+
+        enterCalendar(grade, sClass);
+      });
+
+      changeClassBtn.addEventListener('click', function() {
+        if(calendar) {
+          calendar.destroy();
+        }
+        pwInput.value = ''; 
+        updatePwPlaceholder();
+        mainScreen.style.display = 'none';
+        selectionScreen.style.display = 'flex';
+      });
+
+      function enterCalendar(grade, sClass) {
+        currentStorageKey = `events_G${grade}_C${sClass}`;
+        currentTimetableKey = `timetable_G${grade}_C${sClass}`;
+        classTitle.textContent = `🏫 ${grade}학년 ${sClass}반`;
+
+        selectionScreen.style.display = 'none';
+        mainScreen.style.display = 'block';
+
+        loadTimetable(); 
+        initCalendar();
+      }
+
+      function loadTimetable() {
+        const savedTimetable = JSON.parse(localStorage.getItem(currentTimetableKey)) || {};
+        const inputs = timetableBody.querySelectorAll('input');
+        
+        inputs.forEach(input => {
+          const period = input.dataset.period;
+          const day = input.dataset.day;
+          const key = `${day}_${period}`;
+          input.value = savedTimetable[key] || ''; 
+        });
+      }
+
+      saveTimetableBtn.addEventListener('click', function() {
+        const timetableData = {};
+        const inputs = timetableBody.querySelectorAll('input');
+
+        inputs.forEach(input => {
+          const period = input.dataset.period;
+          const day = input.dataset.day;
+          const key = `${day}_${period}`;
+          timetableData[key] = input.value.trim();
+        });
+
+        localStorage.setItem(currentTimetableKey, JSON.stringify(timetableData));
+        alert('시간표가 저장되었습니다!');
+      });
+
+      function initCalendar() {
+        savedEvents = JSON.parse(localStorage.getItem(currentStorageKey)) || [];
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'ko',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,dayGridWeek'
+          },
+          events: savedEvents,
+          eventClick: function(info) {
+            if (confirm(`'${info.event.title}' 일정을 삭제하시겠습니까?`)) {
+              info.event.remove();
+              savedEvents = savedEvents.filter(event => event.title !== info.event.title || event.start !== info.event.startStr);
+              localStorage.setItem(currentStorageKey, JSON.stringify(savedEvents));
+            }
+          }
+        });
+
+        calendar.render();
+      }
+
+      const form = document.getElementById('eval-form');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const title = document.getElementById('title').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const color = document.getElementById('subject-color').value;
+
+        let endDateString = startDate; 
+
+        if (endDate) {
+          if (new Date(startDate) > new Date(endDate)) {
+            alert('종료일은 시작일보다 빠를 수 없습니다.');
+            return;
+          }
+          const adjustedEndDate = new Date(endDate);
+          adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+          endDateString = adjustedEndDate.toISOString().split('T')[0];
+        } else {
+          const adjustedEndDate = new Date(startDate);
+          adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+          endDateString = adjustedEndDate.toISOString().split('T')[0];
+        }
+
+        const textColor = color === '#90afc5' ? '#ffffff' : '#4a4a4a';
+
+        const newEvent = {
+          title: title,
+          start: startDate,
+          end: endDateString,
+          backgroundColor: color,
+          borderColor: color,
+          textColor: textColor,
+          allDay: true
+        };
+
+        calendar.addEvent(newEvent);
+
+        savedEvents.push(newEvent);
+        localStorage.setItem(currentStorageKey, JSON.stringify(savedEvents));
+
+        form.reset();
+      });
+    });
+  </script>
+</body>
+</html>
